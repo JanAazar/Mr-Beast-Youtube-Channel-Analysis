@@ -1,0 +1,341 @@
+---
+title: "Mr Beast !!!"
+author: "Aazar Jan"
+date: "2023-04-16"
+output: slidy_presentation
+---
+
+# Importing Libraries
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning = FALSE)
+```
+
+
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(zoo)
+library(wordcloud)
+library(RColorBrewer)
+library(tm)
+library(grid)
+library("gridExtra")
+```
+
+
+```{r echo=FALSE}
+raw_df = read.csv('MrBeastYoutube.csv')
+```
+
+
+# Analysing Mr Beast's Youtube Channel
+
+![](https://ichef.bbci.co.uk/news/976/cpsprodpb/16621/production/_122718619_maxresdefault1.jpg.webp)
+
+**I will give a free iPhone to anyone who doesn't sleep till the end of this presentation!**
+
+---
+
+In this project, I will analyse the famous YouTube channel "Mr Beast". I have extracted this data from Google using the YouTube API. 
+
+The data set contains 7 features:
+
+ 1. VideoId: The primary key that identifies every video.
+ 
+ 2. Title: The title of every video.
+ 
+ 3. PublishedAt: The time stamp when the video was published.
+ 
+ 4. ViewCount: Total number of views received by the video.
+ 
+ 5. likeCount: Total number of likes received by the video.
+ 
+ 6. commentCount: Total number of comments received by the video.
+ 
+ 7. duration: Duration of video in seconds.
+ 
+---
+
+# Pre-processing:
+ 
+ 
++ Remove duplicates and ensure appropriate data types.
+
++ Data Exploration: Create new features, analyze growth of channel (views) over time, analyze viewer engagement (likes/comments) over time, and calculate key ratios (likes-to-views, comments-to-views).
+
++ Identify Best and Worst Videos: Determine videos with highest/lowest engagement metrics.
+
++ Extract Relationships Between Variables: Analyze relationships, such as video duration vs. engagement metrics.
+
++ Track Growth with Moving Averages: Smooth out fluctuations using moving averages to track long-term trends.
+
++ Create Word Clouds: Use text mining to analyze titles and descriptions for common themes and keywords.
+ 
+**Possible Improvements:**
+ 
+ + The best way to monitor the growth of a YouTube channel is by its subscriber count, however, currently the YouTube API does not provide historical subscriber count beyond 30 days.
+ 
+ + Having access to more user features like viewer to subscriber ratio, subscriber gain for every video, and average watch duration.
+ 
+
+---
+
+```{r}
+# removing title column from the dataframe
+df <- raw_df[,-3] 
+head(df)
+```
+
+```{r}
+summary(df)
+```
+
+
+```{r}
+paste("Number of rows:",nrow(df))
+```
+---
+
+# Finding duplicates
+
+Lets see if there are any duplicates in the data set, because I used two different endpoint functions: one for normal videos and one for playlist videos. 
+
+
+```{r}
+duplicates <- duplicated(df$title)
+total_duplicates <- sum(duplicates)
+total_duplicates
+```
+
++ whoa! Around 45 percent of the videos are duplicates.
++ It is because I used two functions to pull videos from the API: non_playlist_videos and playlist_videos
++ Most of the videos returned by these two methods are same but YouTube gives it different video Ids.
++ However, there were some videos there are only returned in one category and that is why I used two functions. 
+
+Lets drop them. 
+
+```{r}
+df <- df[!duplicated(df$title),]
+paste("Number of rows:",nrow(df))
+```
+
+
+---
+
+Let's now convert the column "pubishedAt" column into a data-time format yyyy-mm-dd and create another column for year to do aggregate analysis.
+
+```{r}
+df <- df %>% mutate(publishedAt = as.POSIXct(publishedAt, format = "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")) %>% mutate(publishedAt = format(publishedAt, format = "%Y-%m-%d"),)
+df$year <- format(as.Date(df$publishedAt), format="%Y")
+```
+
+
+```{r}
+head(df)
+```
+---
+
+# Top Five watched videos
+
+```{r fig.width=10}
+top_five = df %>% slice_max(viewCount,n=5) %>% select(title,viewCount,publishedAt)
+grid.table(top_five)
+```
+
+
+
+# Least Five watched videos 
+```{r fig.width=10}
+least_five = df %>% slice_min(viewCount,n=5) %>% select(title,viewCount,publishedAt)
+grid.table(least_five)
+```
+
+
+# Average Views over time   
+
+```{r}
+ggplot(df, aes(x=year,y=viewCount)) + geom_bar(stat='summary',fun="mean",fill='skyblue')
+```
+
+# Average Like Count over time
+
+```{r}
+df$year <- format(as.Date(df$publishedAt), format="%Y")
+ggplot(df, aes(x=year,y=likeCount)) + geom_bar(stat='summary',fun="mean",fill='lightgreen')
+```
+
+# Videos by Year
+
+```{r}
+ggplot(df) + geom_histogram(aes(x=year),stat="count",fill="maroon") + labs(x="Year", y = "Number of Videos")
+```
+
+# Videos by Month
+
+```{r}
+ggplot(df, aes(x=format(as.Date(df$publishedAt), format="%m"))) + geom_bar(stat='count',fill="purple") + labs(x="Month", y = "Number of Videos")
+```
+
+# Is Mr Beast making longer videos now than before? Lets find out...
+
+First,lets convert duration into minutes because seconds don't make sense.
+
+```{r}
+df <- df %>% mutate(dur_in_min=round(duration/60,2))
+```
+
+Now, before me plot duration distributions for each year, lets plot a general duration distribution to find out outliers and remove them, because I know some Mr Beast Videos are hours long!!!
+
+```{r fig.width=10}
+ggplot(df, aes(x=dur_in_min)) + geom_density(fill="yellow",size=1) + labs(x="Duration in minutes") + geom_vline(xintercept = 50,size=2,color="red")
+```
+<img src= "https://previews.123rf.com/images/kiberstalker/kiberstalker1805/kiberstalker180500092/101873404-cute-enraptured-emotions-emoji-emoticon-face-surprised-emoji-excited-with-admiring-look-and-googly.jpg" width="200" height="200">
+
+
+```{r}
+ggplot(df %>% filter(dur_in_min<60),aes(y=year,x=dur_in_min)) + geom_boxplot(fill='green') + labs(x="Duration in minutes",y="Year")
+```
+
+Well, the general trend is that videos have gotten longer over time. 
+
+# Does duration affect like count?
+
+```{r fig.height=10}
+ggplot(df %>% filter(dur_in_min<=60 & likeCount <= 10000000), aes(x = dur_in_min, y = likeCount)) + geom_point() + geom_smooth() + facet_wrap(vars(year))
+```
+
+<img src= "https://media4.giphy.com/media/3o6Zt5k4mdzEvDqH4s/giphy.gif?cid=6c09b9529900af9ce772cd01ebf79d0668f34e31eb5b24fe&rid=giphy.gif&ct=g" width="400" height="400">
+
+---
+
+**Lets find out how the engagement metrics are related to each other. What is is the distribution of view-like, view-comment and like-comment ratios.**
+
+## Like to View Ratio
+```{r}
+ggplot(df, aes(x = df$likeCount/df$viewCount)) + geom_density(fill="orange") + labs(x= "Like to View ratio") +geom_vline(xintercept = 0.025,size=1,color="blue")
+```
+ 
+For every 2.5 people who like the video, there are 100 people who watch the video. 
+
+## Comment to Like Ratio
+```{r}
+ggplot(df, aes(x = df$commentCount/df$likeCount)) + geom_density(fill="brown") + geom_vline(xintercept = 0.033,size=1,color=
+'green') + labs(x= "Comment to Like ratio")
+```
+
+
+For every 3.3 people who comment on this video, 100 people like the video.
+
+---
+
+
+# Have these ratios changed over time?
+
+```{r}
+ggplot(df, aes(y=year, x=df$commentCount/df$likeCount)) + geom_bar(stat='summary',fun="mean",fill="black") + labs(x="like to comment ratio") + theme_bw()
+```
+
+```{r}
+ggplot(df, aes(y=year, x=df$likeCount/df$viewCount)) + geom_bar(stat='summary',fun="mean",fill="pink") + labs(x="like to comment ratio") + theme_dark()
+```
+
+---
+
+On way to assess the success of a video is by user engagement turnover. In English, how higher were the above metrics. Now let's out the five best videos in terms of view to like ratio.
+
+```{r fig.width=12}
+grid.table(df %>% mutate(ratio=likeCount/viewCount) %>%  slice_max(ratio, n=5)  %>% select(title,publishedAt,viewCount,likeCount,ratio) %>% arrange(desc(ratio)))
+```
+---
+
+#Moving Averages 
+
+```{r}
+df <- df %>% arrange(as.Date(publishedAt)) %>%  mutate(view_ma_5 = rollapply(viewCount, width = 5, FUN = mean, fill = NA, align = "right"))
+df <- df %>% arrange(as.Date(publishedAt)) %>%  mutate(like_ma_5 = rollapply(likeCount, width = 5, FUN = mean, fill = NA, align = "right"))
+```
+
+
+## View Count Moving avearge
+
+```{r, fig.width=20}
+ggplot(df, aes(x=as.Date(publishedAt))) + geom_line(aes(y=viewCount,group=1)) + geom_line(aes(y=view_ma_5,group=1),color="red",size=2) + scale_x_date(breaks = seq(as.Date("2012-02-20"), as.Date("2023-04-01"), by = "1 year"), 
+date_labels = "%b %y") + labs(x="publish Date")
+```
+
+## Like Count Moving average
+
+
+```{r, fig.width=20}
+ggplot(df, aes(x=as.Date(publishedAt))) + geom_line(aes(y=likeCount,group=1)) + geom_line(aes(y=like_ma_5,group=1),color="purple",size=2) + scale_x_date(breaks = seq(as.Date("2012-02-20"), as.Date("2023-04-01"), by = "1 year"), 
+date_labels = "%b %y") + labs(x="publish Date")
+```
+
+
+
+
+# Titles and Descriptions
+
+Lets know analyze what kind of vocabulary does Mr Beast use in his title and video descriptions?
+Are they catchy?
+Do they follow a certain pattern?
+
+
+
+```{r}
+# Cleaning the title column, converting it into corpus and making a frequency table
+titles = df$title
+docs <- Corpus(VectorSource(titles))
+docs <- docs %>%
+  tm_map(removeNumbers) %>%
+  tm_map(removePunctuation) %>%
+  tm_map(stripWhitespace)
+docs <- tm_map(docs, content_transformer(tolower))
+docs <- tm_map(docs, removeWords, stopwords("english"))
+dtm <- TermDocumentMatrix(docs) 
+matrix <- as.matrix(dtm) 
+words <- sort(rowSums(matrix),decreasing=TRUE) 
+title_df <- data.frame(word = names(words),freq=words)
+```
+
+
+
+
+```{r fig.height=7, fig.width=7}
+set.seed(123)
+wordcloud(words = title_df$word, freq = title_df$freq, min.freq = 1,max.words=200, random.order=FALSE, rot.per=0.35,colors=brewer.pal(8, "Dark2"))
+title("Title Words", line = -1, outer = TRUE)
+```
+
+Words like "challenge","Last","Free","Random","Wins" do attract people. 
+
+
+```{r}
+# Cleaning the title column, converting it into corpus and making a frequency table
+descriptions = raw_df$description
+descriptions = gsub("http[[:alnum:][:punct:]]*", "", descriptions)
+descriptions = gsub('[^[:alnum:] ]','',descriptions)
+docs <- Corpus(VectorSource(descriptions))
+docs <- docs %>%
+  tm_map(removeNumbers) %>%
+  tm_map(removePunctuation) %>%
+  tm_map(stripWhitespace) 
+docs <- tm_map(docs, content_transformer(tolower))
+docs <- tm_map(docs, removeWords, stopwords("english"))
+dtm <- TermDocumentMatrix(docs) 
+matrix <- as.matrix(dtm) 
+words <- sort(rowSums(matrix),decreasing=TRUE) 
+descriptions_df <- data.frame(word = names(words),freq=words)
+```
+
+
+```{r fig.height=7, fig.width=7}
+set.seed(124)
+wordcloud(words = descriptions_df$word, freq = descriptions_df$freq, min.freq = 1,max.words=200, random.order=FALSE, rot.per=0.55,colors=brewer.pal(8, "Dark2"))
+title("Description Words", line = -1, outer = TRUE)
+```
+
+Ya'all know the answer to this :p
+
