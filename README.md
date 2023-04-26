@@ -24,7 +24,7 @@ The YouTube API was used to collect video data from the "Mr Beast" YouTube chann
 
 ## Data Analysis
 
-The collected video data was analyzed using Python and popular data analysis libraries such as Pandas, NumPy, and Matplotlib. The analysis includes various visualizations and statistical measures to gain insights into the channel's video metrics, such as like count, view count, comment count, and duration. The analysis aims to provide a comprehensive overview of the "Mr Beast" YouTube channel's performance and engagement.
+The collected video data was analyzed using R and popular data analysis libraries such as Dplyr, ggplot, and wordcloud. The analysis includes various visualizations and statistical measures to gain insights into the channel's video metrics, such as like count, view count, comment count, and duration. The analysis aims to provide a comprehensive overview of the "Mr Beast" YouTube channel's performance and engagement over time. 
 
 ## Usage
 
