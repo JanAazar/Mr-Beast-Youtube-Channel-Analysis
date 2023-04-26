@@ -19,7 +19,7 @@ The YouTube API was used to collect video data from the "Mr Beast" YouTube chann
 + main.py: Python script used to collect video data from the YouTube API.
 + analysis.rmd: R Markdown file that contains the analysis of the collected video data.
 + presentation.html: Slidy HTML presentation of the analysis.
-+ data.csv: CSV file that contains the raw video data collected from the YouTube API.
++ MrBeastYoutube.csv: CSV file that contains the raw video data collected from the YouTube API.
 + README.md: The current file, which provides documentation about the project.
 
 ## Data Analysis
