@@ -58,7 +58,7 @@ The data set contains 7 features:
  
 ---
 
-# Pre-processing:
+# Pre-processing and Analysis:
  
  
 + Remove duplicates and ensure appropriate data types.
@@ -84,19 +84,17 @@ The data set contains 7 features:
 
 ```{r}
 # removing title column from the dataframe
-df <- raw_df[,-3] 
+df <- raw_df[,-4] 
 head(df)
-```
-
-```{r}
-summary(df)
 ```
 
 
 ```{r}
 paste("Number of rows:",nrow(df))
 ```
+
 ---
+
 
 # Finding duplicates
 
@@ -120,10 +118,7 @@ Lets drop them.
 df <- df[!duplicated(df$title),]
 paste("Number of rows:",nrow(df))
 ```
-
-
----
-
+ 
 Let's now convert the column "pubishedAt" column into a data-time format yyyy-mm-dd and create another column for year to do aggregate analysis.
 
 ```{r}
@@ -135,6 +130,25 @@ df$year <- format(as.Date(df$publishedAt), format="%Y")
 ```{r}
 head(df)
 ```
+ 
+ 
+Now, lets also remove all of his 2023 videos because it has just been 3 months and it takes some time for a video to reach its actual engagement statistics. 
+
+```{r}
+df %>% filter(year==2023) %>% select(title)
+```
+Finally, we remove these 5 videos and summarize the dataframe below.
+
+```{r}
+df <- df %>% filter(year<2023)
+paste("We will do analysis on",nrow(df),"videos.")
+```
+
+## Summary
+```{r}
+summary(df)
+```
+
 ---
 
 # Top Five watched videos
@@ -156,14 +170,13 @@ grid.table(least_five)
 # Average Views over time   
 
 ```{r}
-ggplot(df, aes(x=year,y=viewCount)) + geom_bar(stat='summary',fun="mean",fill='skyblue')
+ggplot(df %>% group_by(year) %>% mutate(view_count=mean(viewCount)), aes(x=year,y=view_count))+ geom_line(group=1,color='skyblue',size=2) + geom_point(size=4)
 ```
 
 # Average Like Count over time
 
 ```{r}
-df$year <- format(as.Date(df$publishedAt), format="%Y")
-ggplot(df, aes(x=year,y=likeCount)) + geom_bar(stat='summary',fun="mean",fill='lightgreen')
+ggplot(df %>% group_by(year) %>% mutate(like_count=mean(likeCount)), aes(x=year,y=like_count))+ geom_line(group=1,color='green',size=2) + geom_point(size=4)
 ```
 
 # Videos by Year
@@ -171,7 +184,6 @@ ggplot(df, aes(x=year,y=likeCount)) + geom_bar(stat='summary',fun="mean",fill='l
 ```{r}
 ggplot(df) + geom_histogram(aes(x=year),stat="count",fill="maroon") + labs(x="Year", y = "Number of Videos")
 ```
-
 # Videos by Month
 
 ```{r}
@@ -183,7 +195,9 @@ ggplot(df, aes(x=format(as.Date(df$publishedAt), format="%m"))) + geom_bar(stat=
 First,lets convert duration into minutes because seconds don't make sense.
 
 ```{r}
-df <- df %>% mutate(dur_in_min=round(duration/60,2))
+
+df <- df %>% mutate(dur_in_min=round(duration_in_seconds/60,2))
+
 ```
 
 Now, before me plot duration distributions for each year, lets plot a general duration distribution to find out outliers and remove them, because I know some Mr Beast Videos are hours long!!!
@@ -234,20 +248,21 @@ For every 3.3 people who comment on this video, 100 people like the video.
 # Have these ratios changed over time?
 
 ```{r}
-ggplot(df, aes(y=year, x=df$commentCount/df$likeCount)) + geom_bar(stat='summary',fun="mean",fill="black") + labs(x="like to comment ratio") + theme_bw()
+ggplot(df, aes(x=year, y=commentCount/likeCount)) + geom_bar(stat='summary',fun="mean",fill="black") + labs(y="like to comment ratio",x="year") + theme_bw()
 ```
 
 ```{r}
-ggplot(df, aes(y=year, x=df$likeCount/df$viewCount)) + geom_bar(stat='summary',fun="mean",fill="pink") + labs(x="like to comment ratio") + theme_dark()
+ggplot(df, aes(x=year, y=df$likeCount/df$viewCount)) + geom_bar(stat='summary',fun="mean",fill="pink") + labs(y="like to view ratio") 
 ```
 
 ---
 
-On way to assess the success of a video is by user engagement turnover. In English, how higher were the above metrics. Now let's out the five best videos in terms of view to like ratio.
+On way to assess the success of a video is by user engagement turnover. In English, how higher were the above metrics. Now let's out the five best videos in terms of like to ratio ratio.
 
 ```{r fig.width=12}
 grid.table(df %>% mutate(ratio=likeCount/viewCount) %>%  slice_max(ratio, n=5)  %>% select(title,publishedAt,viewCount,likeCount,ratio) %>% arrange(desc(ratio)))
 ```
+
 ---
 
 #Moving Averages 
@@ -258,11 +273,12 @@ df <- df %>% arrange(as.Date(publishedAt)) %>%  mutate(like_ma_5 = rollapply(lik
 ```
 
 
+
 ## View Count Moving avearge
 
 ```{r, fig.width=20}
 ggplot(df, aes(x=as.Date(publishedAt))) + geom_line(aes(y=viewCount,group=1)) + geom_line(aes(y=view_ma_5,group=1),color="red",size=2) + scale_x_date(breaks = seq(as.Date("2012-02-20"), as.Date("2023-04-01"), by = "1 year"), 
-date_labels = "%b %y") + labs(x="publish Date")
+date_labels = "%b %y") + labs(x="publish Date") + scale_y_log10()
 ```
 
 ## Like Count Moving average
@@ -270,7 +286,7 @@ date_labels = "%b %y") + labs(x="publish Date")
 
 ```{r, fig.width=20}
 ggplot(df, aes(x=as.Date(publishedAt))) + geom_line(aes(y=likeCount,group=1)) + geom_line(aes(y=like_ma_5,group=1),color="purple",size=2) + scale_x_date(breaks = seq(as.Date("2012-02-20"), as.Date("2023-04-01"), by = "1 year"), 
-date_labels = "%b %y") + labs(x="publish Date")
+date_labels = "%b %y") + labs(x="publish Date") + scale_y_log10()
 ```
 
 
@@ -338,4 +354,17 @@ title("Description Words", line = -1, outer = TRUE)
 ```
 
 Ya'all know the answer to this :p
+
+
+
+
+# Summary
+
+**In this exploratory data analysis we:**
+
++ Found the most successful videos in terms of view count and like-to-view ratio
++ Studied the growth of channels over time by analyzing the number of views, likes, comments and their ratios
++ Digged into the relationship between video features like duration and user engagement
++ Used word clouds to identified keywords used in video titles and descriptions for viewer attraction and social media marketing
+
 
