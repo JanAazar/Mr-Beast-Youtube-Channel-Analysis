@@ -4,6 +4,9 @@
 
 This GitHub repository contains an analysis of the "Mr Beast" YouTube channel using the YouTube API. The analysis includes information such as video ID, title, description, like count, view count, comment count, and duration for each video on the channel.
 
+
+[Visit the Analysis Site](https://janaazar.github.io/Mr-Beast-Youtube-Channel-Analysis/#(1))
+
 ## Project Description
 
 The "Mr Beast" YouTube channel is known for its philanthropic content, where the creator, Jimmy Donaldson, known as "Mr Beast," creates and uploads videos that often involve giving away large sums of money to individuals or charities. The purpose of this project is to analyze the video data from the channel using the YouTube API to gain insights into the channel's content and engagement metrics.
@@ -18,7 +21,7 @@ The YouTube API was used to collect video data from the "Mr Beast" YouTube chann
 
 + main.py: Python script used to collect video data from the YouTube API.
 + analysis.rmd: R Markdown file that contains the analysis of the collected video data.
-+ presentation.html: Slidy HTML presentation of the analysis.
++ index.html: Slidy HTML presentation of the analysis.
 + MrBeastYoutube.csv: CSV file that contains the raw video data collected from the YouTube API.
 + README.md: The current file, which provides documentation about the project.
 
